@@ -28,7 +28,12 @@ MODEL_PATHS = {
 }
 
 # Model regresi
-svr_regresi = joblib.load("svr_regresi_model.pkl")
+REGRESSION_MODELS = {
+    "👥 KNN Regression": "knn_regresi_model.pkl",
+    "🌳 Decision Tree Regression": "decision_tree_regresi_model.pkl",
+    "📈 Support Vector Regression": "svr_regresi_model.pkl",
+    "🧠 Neural Network Regression": "nn_regresi_model.pkl"
+}
 scaler_regresi = joblib.load("scaler_regresi.pkl")
 
 # ==========================
@@ -196,12 +201,20 @@ st.markdown(f"""
 
 col1, col2, col3, col4 = st.columns(4)
 
-cards = [
-    ("🧠", "Model Terbaik", "Decision Tree"),
-    ("🎯", "Akurasi", "80,01%"),
-    ("📍", "Fitur", "6 Variabel"),
-    ("🏡", "Kategori", "3 Kelas")
-]
+if mode == "Klasifikasi":
+    cards = [
+        ("🧠", "Model Terbaik", "Decision Tree"),
+        ("🎯", "Akurasi", "80,01%"),
+        ("📍", "Fitur", "6 Variabel"),
+        ("🏡", "Kategori", "3 Kelas")
+    ]
+else:
+    cards = [
+        ("📈", "Model", "4 Algoritma"),
+        ("📉", "RMSE Terbaik", "16,88 M"),
+        ("📍", "Fitur", "6 Variabel"),
+        ("💰", "Output", "Harga (Rp)")
+    ]
 
 for col, (icon, title, value) in zip([col1, col2, col3, col4], cards):
     with col:
@@ -234,11 +247,16 @@ if mode == "Klasifikasi":
 
 else:
 
-    st.subheader("📈 Metode Prediksi")
+    st.subheader("📈 Pilih Metode Prediksi")
 
-    st.info("Model aktif: Support Vector Regression (SVR)")
+    selected_model = st.selectbox(
+        "Pilih algoritma regresi",
+        list(REGRESSION_MODELS.keys())
+    )
 
-st.divider()
+    model = joblib.load(REGRESSION_MODELS[selected_model])
+
+    st.info(f"Model aktif: {selected_model}")
 
 # ==========================
 # INPUT DATA
@@ -334,11 +352,14 @@ if prediksi:
 
     else:
 
-        input_prediksi = scaler_regresi.transform(input_data)
+        # Decision Tree Regression tidak memerlukan scaling
+        if "Decision Tree" in selected_model:
+            input_prediksi = input_data
+        else:
+            input_prediksi = scaler_regresi.transform(input_data)
 
-        hasil = svr_regresi.predict(input_prediksi)[0]
+        hasil = model.predict(input_prediksi)[0]
 
         st.success(
             f"💰 Estimasi Harga Rumah: **Rp {hasil:,.0f}**"
         )
-
