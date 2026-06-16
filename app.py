@@ -7,7 +7,7 @@ import joblib
 # ==========================
 
 st.set_page_config(
-    page_title="Prediksi HargaRumah",
+    page_title="Prediksi Harga Rumah",
     page_icon="🏠",
     layout="wide"
 )
@@ -19,12 +19,17 @@ st.set_page_config(
 lokasi_encoder = joblib.load("lokasi_encoder.pkl")
 scaler = joblib.load("scaler.pkl")
 
+# Model klasifikasi
 MODEL_PATHS = {
     "🌳 Decision Tree (80,01%)": "decision_tree_model.pkl",
     "👥 K-Nearest Neighbors (78,12%)": "knn_model.pkl",
     "🧠 Neural Network (68,01%)": "nn_model.pkl",
     "📈 Support Vector Machine (65,71%)": "svm_model.pkl"
 }
+
+# Model regresi
+svr_regresi = joblib.load("svr_regresi_model.pkl")
+scaler_regresi = joblib.load("scaler_regresi.pkl")
 
 # ==========================
 # CUSTOM CSS
@@ -148,6 +153,11 @@ with st.sidebar:
 
     st.markdown("## 🏠 Prediksi Harga Rumah")
 
+    mode = st.radio(
+        "Pilih Jenis Prediksi",
+        ["Klasifikasi", "Regresi"]
+    )
+
     st.markdown("---")
 
     st.markdown("📊 Dashboard")
@@ -158,17 +168,24 @@ with st.sidebar:
     st.markdown("---")
 
     st.caption("Dasar Ilmu Data (GIK2GAB3)")
-    st.caption("Kelompok 3")
+    st.caption("Kelompok 4")
 
 # ==========================
 # HEADER
 # ==========================
 
-st.markdown("""
+subtitle = (
+    "Prediksi kategori harga rumah berdasarkan karakteristik properti menggunakan machine learning."
+    if mode == "Klasifikasi"
+    else
+    "Estimasi harga rumah dalam rupiah berdasarkan karakteristik properti menggunakan machine learning."
+)
+
+st.markdown(f"""
 <div class="header-card">
     <div class="title">🏠 Aplikasi Prediksi Harga Rumah di Depok 2026</div>
     <div class="subtitle">
-        Prediksi kategori harga rumah berdasarkan karakteristik properti menggunakan machine learning.
+        {subtitle}
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -202,16 +219,24 @@ st.write("")
 # PILIH MODEL
 # ==========================
 
-st.subheader("🧠 Pilih Metode Prediksi")
+if mode == "Klasifikasi":
 
-selected_model = st.selectbox(
-    "Pilih algoritma machine learning",
-    list(MODEL_PATHS.keys())
-)
+    st.subheader("🧠 Pilih Metode Prediksi")
 
-model = joblib.load(MODEL_PATHS[selected_model])
+    selected_model = st.selectbox(
+        "Pilih algoritma machine learning",
+        list(MODEL_PATHS.keys())
+    )
 
-st.info(f"Model aktif: {selected_model}")
+    model = joblib.load(MODEL_PATHS[selected_model])
+
+    st.info(f"Model aktif: {selected_model}")
+
+else:
+
+    st.subheader("📈 Metode Prediksi")
+
+    st.info("Model aktif: Support Vector Regression (SVR)")
 
 st.divider()
 
@@ -262,7 +287,14 @@ with col2:
 
 st.write("")
 
-prediksi = st.button("🔮 Prediksi Kategori Harga")
+button_text = (
+    "🔮 Prediksi Kategori Harga"
+    if mode == "Klasifikasi"
+    else
+    "💰 Prediksi Harga Rumah"
+)
+
+prediksi = st.button(button_text)
 
 # ==========================
 # PROSES PREDIKSI
@@ -281,19 +313,32 @@ if prediksi:
         "Lokasi": [lokasi_encoded]
     })
 
-    if "Decision Tree" not in selected_model:
-        input_prediksi = scaler.transform(input_data)
+    if mode == "Klasifikasi":
+
+        if "Decision Tree" not in selected_model:
+            input_prediksi = scaler.transform(input_data)
+        else:
+            input_prediksi = input_data
+
+        hasil = model.predict(input_prediksi)[0]
+
+        kategori = {
+            0: "🟢 Murah",
+            1: "🟡 Sedang",
+            2: "🔴 Mahal"
+        }
+
+        st.success(
+            f"Kategori Harga Rumah: **{kategori[hasil]}**"
+        )
+
     else:
-        input_prediksi = input_data
 
-    hasil = model.predict(input_prediksi)[0]
+        input_prediksi = scaler_regresi.transform(input_data)
 
-    kategori = {
-        0: "🟢 Murah",
-        1: "🟡 Sedang",
-        2: "🔴 Mahal"
-    }
+        hasil = svr_regresi.predict(input_prediksi)[0]
 
-    st.success(
-        f"Kategori Harga Rumah: **{kategori[hasil]}**"
-    )
+        st.success(
+            f"💰 Estimasi Harga Rumah: **Rp {hasil:,.0f}**"
+        )
+
